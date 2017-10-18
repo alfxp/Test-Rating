@@ -20,7 +20,7 @@ namespace Test_Rating.Controllers
             _context = context;
         }
 
-        [Route("GetRating")]
+        [Route("GetRating")]        
         [HttpPost]
         public IActionResult GetRating()
         {
@@ -37,27 +37,26 @@ namespace Test_Rating.Controllers
                 firstName = u.User.Name                
             });
 
-            return Ok(response);
+            try
+            {
+                SVDPP.SVDPP.Main1();
+
+                var t1 = SVDPP.SVDPP.OrigemMatrix;
+                var t2 = SVDPP.SVDPP.ReturnMatrix;
+                
+                t1.Append("<br><br>");
+                t1.Append(t2);
+
+                return Ok(t1.ToString());
+
+            }
+            catch (Exception ex )
+            {
+
+                throw ex;
+            }                        
                         
         }
-
-        //[Route("GetRating")]
-        //[HttpPost]
-        //public async Task<IActionResult> GetRating()
-        //{
-
-        //    var users = await _context.UserAdvertisement
-        //        .Select(x => x)
-        //        .ToArrayAsync();
-
-        //    var response = users.Select(u => new
-        //    {
-        //        firstName = u.User.Name
-        //    });
-
-        //    return Ok(response);
-
-        //}
 
         public IActionResult Error()
         {
