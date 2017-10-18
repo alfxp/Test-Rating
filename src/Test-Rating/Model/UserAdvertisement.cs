@@ -20,6 +20,10 @@ namespace Test_Rating.Model
 
         public int Rating { get; set; }
 
+        public int RatingPredict { get; set; }
+
+        public bool? ViewAdvertisement { get; set; }
+
 
     }
 }

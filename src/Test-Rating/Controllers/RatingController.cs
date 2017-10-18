@@ -43,9 +43,11 @@ namespace Test_Rating.Controllers
 
                 var t1 = SVDPP.SVDPP.OrigemMatrix;
                 var t2 = SVDPP.SVDPP.ReturnMatrix;
-                
+                var t3 = SVDPP.SVDPP.BestMatrix;
+
                 t1.Append("<br><br>");
                 t1.Append(t2);
+                t1.Append(t3);
 
                 return Ok(t1.ToString());
 

@@ -11,8 +11,9 @@ namespace Test_Rating.SVDPP
     public class SVDPP
     {
 
-        private static int UserCount = 100;
-        private static int AdvertisementCount = 30;
+        private static int UserCount = 5;
+        private static int AdvertisementCount = 300;
+        private static int BestAdvertisement = 50;
 
         private static int Factors = 5;                                         // The number of latent factors
         private static double TS = 0.025;                                       // The training speed 
@@ -27,7 +28,10 @@ namespace Test_Rating.SVDPP
         private static List<List<double>> MatrixUI = new List<List<double>>();  // Declaring the matrix of ratings
 
         private static List<UserAdvertisement> listUserAdvertisement = new List<UserAdvertisement>(); //Avaliações dos usuarios com os ratings.
-        
+
+        //Best Recomend
+        public static StringBuilder BestMatrix = new StringBuilder();
+
         //Retorno Html.
         public static StringBuilder ReturnMatrix = new StringBuilder();
 
@@ -36,6 +40,39 @@ namespace Test_Rating.SVDPP
         //Function to get a random number 
         private static readonly Random random = new Random();
         private static readonly object syncLock = new object();
+
+
+        public static void Main1()
+        {
+
+            //Posso utilizar outros criterios para definir, O meu rating. ou melhor meu rating pode ter valores maiores.
+            // Entrou em contato Telefone = 5
+            // Entrou em contato E-mail = 4
+            // Favoritos = 3
+            // Ainda não viu o anuncio = 2
+            // Anuncio Antigo =1 (Superior a 3 meses.)
+
+            GenerateRating(); // Gerador de dados.
+
+            //WriteMatrix(); //Original.
+
+            Initialize(); // Initializing the ratings prediction model
+
+            Learn();      // Training the ratings prediction model
+
+            Predict();    // Predicting atings for the unrated items
+
+            ///ShowResult();        
+
+            ConvertMatrix();        //Convert a matrix em classe.  
+
+            ShowResult2();          //Antes e o Depois.
+
+            BestRating();
+
+        }
+
+
         public static int RandomNumber(int min, int max)
         {
             lock (syncLock)
@@ -44,7 +81,7 @@ namespace Test_Rating.SVDPP
                 if (t <= 0)
                     return 0;
 
-                    return t;
+                return t;
             }
         }
 
@@ -275,20 +312,151 @@ namespace Test_Rating.SVDPP
 
             //Console.WriteLine();
         }
-        public static void Main1()
+
+        private static void BestRating()
         {
 
-            GenerateRating(); // Get Rating
+            var AllUser = listUserAdvertisement
+                .Select(x => x)
+                .GroupBy(x => x.User.UserId)                
+                .ToList();
 
-            WriteMatrix(); // Write matrix.
+            string tab = "\t";
 
-            Initialize(); // Initializing the ratings prediction model
+            BestMatrix = null;
+            BestMatrix = new StringBuilder();
+            BestMatrix.AppendLine("<table class='table'>");
 
-            Learn();      // Training the ratings prediction model
+            foreach (var item in AllUser)
+            {
+                                
+                var t = listUserAdvertisement
+                    .Select(x=>x)
+                    .Where(x => 
+                        x.Rating == 0
+                        && x.User.UserId == item.FirstOrDefault().User.UserId
+                    )
+                    .OrderByDescending(x => x.RatingPredict).ThenBy(n => n.ViewAdvertisement)
+                    .Take(BestAdvertisement)
+                    .ToList();
+                BestMatrix.Append("<tr>");
 
-            Predict();    // Predicting atings for the unrated items
+                var showUser = true;
 
-            ShowResult(); //Exibe o Resultado.
+                foreach (var item2 in t)
+                    {
+                        if(showUser)
+                            BestMatrix.AppendFormat("<td>{0}</td>", item2.User.Name);
+
+                        BestMatrix.AppendFormat("<td>{0}</td>", item2.Advertisement.Description );
+                        BestMatrix.AppendFormat("<td>{0}-{1}</td>", item2.Rating, item2.RatingPredict);
+
+                        showUser = false;
+
+                    }
+
+                BestMatrix.AppendLine("</tr>");
+
+            }
+            BestMatrix.AppendLine("</table>");
+
+
+        }
+
+        private static void GenerateRating()
+        {
+
+            listUserAdvertisement = new List<UserAdvertisement>();
+
+            var id = 1;
+
+            //100 Usuarios.
+            for (int i = 1; i <= UserCount; i++)
+            {
+
+                // 1 Usuario avaliou todos os anuncios ativos.
+                // Caso não tenha avaliado será 0.
+                for (int k = 1; k <= AdvertisementCount; k++)
+                {
+                    var UserAdvertisement = new UserAdvertisement();
+
+                    UserAdvertisement.User = new User();
+                    UserAdvertisement.User.UserId = i;
+                    UserAdvertisement.User.Name = "User " + i;
+
+                    UserAdvertisement.Advertisement = new Advertisement();
+                    UserAdvertisement.Advertisement.Id = k;
+                    UserAdvertisement.Advertisement.Description = "Anuncio " + k;
+                    
+                    UserAdvertisement.Rating = RandomNumber(-1, 6);
+
+                    if (i == 1)
+                        UserAdvertisement.Rating = 0;
+
+                        UserAdvertisement.UserAdvertisementId = id;
+                    id++;
+
+                    listUserAdvertisement.Add(UserAdvertisement);
+                }
+            }
+
+            var AllUser = listUserAdvertisement
+                .Select(x => x)
+                .GroupBy(x => x.User.UserId)
+                .ToList();
+
+            MatrixUI = null;
+            MatrixUI = new List<List<double>>();
+
+            var Row = new List<double>();
+            foreach (var item in AllUser)
+            {
+                var ta = listUserAdvertisement.Where(x => x.User.UserId == item.FirstOrDefault().User.UserId).ToList();
+
+                foreach (var item2 in ta)
+                {
+                    int t = item2.Rating;
+                    Row.Add(t);
+                }
+
+                MatrixUI.Add(Row);
+                Row = new List<double>();
+            }
+
+        }
+
+        private static void WriteMatrix()
+        {
+
+            string tab = "\t";
+
+            OrigemMatrix = null;
+            OrigemMatrix = new StringBuilder();
+            OrigemMatrix.AppendLine("<table>");
+
+            for (int User = 0; User < MatrixUI.Count(); User++)
+            {
+                OrigemMatrix.Append(tab + tab + tab + "<tr>");
+
+                for (int Item = 0; Item < MatrixUI.ElementAt(0).Count(); Item++)
+                {
+                    string cellValue = Math.Round(MatrixUI[User][Item]).ToString();
+
+                    if (MatrixUI[User][Item] > 0)
+                    {
+                        OrigemMatrix.AppendFormat("<td>{0}</td>", cellValue);
+                    }
+                    else
+                    {
+                        OrigemMatrix.AppendFormat("<td>?</td>");
+                    }
+
+                }
+
+                OrigemMatrix.AppendLine("</tr>");
+            }
+            OrigemMatrix.AppendLine("</table>");
+
         }
 
         private static void ShowResult()
@@ -314,91 +482,87 @@ namespace Test_Rating.SVDPP
             ReturnMatrix.AppendLine("</table>");
         }
 
-        private static void WriteMatrix()
+        private static void ShowResult2()
         {
 
             string tab = "\t";
 
-            OrigemMatrix = null;
-            OrigemMatrix = new StringBuilder();
-            OrigemMatrix.AppendLine("<table>");
+            ReturnMatrix = null;
+            ReturnMatrix = new StringBuilder();
+            ReturnMatrix.AppendLine("<table class='table'>");
 
-            for (int User = 0; User < MatrixUI.Count(); User++)
-            {
-                OrigemMatrix.Append(tab + tab + tab + "<tr>");
+            var AllUser = listUserAdvertisement
+                .Select(x => x)
+                .GroupBy(x => x.User.UserId)
+                .ToList();
 
-                for (int Item = 0; Item < MatrixUI.ElementAt(0).Count(); Item++)
-                {
-                    string cellValue = Math.Round(MatrixUI[User][Item]).ToString();
-
-                    if (MatrixUI[User][Item] > 0) { 
-                        OrigemMatrix.AppendFormat("<td>{0}</td>", cellValue);
-                    }
-                    else { 
-                        OrigemMatrix.AppendFormat("<td>?</td>");
-                    }
-
-                }
-
-                OrigemMatrix.AppendLine("</tr>");
-            }
-            OrigemMatrix.AppendLine("</table>");            
-
-        }
-
-        private static void GenerateRating()
-        {
-
-            
-            listUserAdvertisement = new List<UserAdvertisement>();
-
-
-            var id = 1;
-
-            //100 Usuarios.
-            for (int i = 1; i <= UserCount; i++)
-            {
-
-                // 1 Usuario avaliou todos os anuncios ativos.
-                // Caso não tenha avaliado será 0.
-                for (int k = 1 ; k <= AdvertisementCount; k++)
-                {
-                    var UserAdvertisement = new UserAdvertisement();
-
-                    UserAdvertisement.User = new User();
-                    UserAdvertisement.User.UserId = i;
-                    UserAdvertisement.User.Name = "User " + i;
-
-                    UserAdvertisement.Advertisement = new Advertisement();
-                    UserAdvertisement.Advertisement.Id = k;
-                    UserAdvertisement.Advertisement.Description = "Anuncio " + k;
-                    
-                    UserAdvertisement.Rating = RandomNumber(-1,6);
-                    UserAdvertisement.UserAdvertisementId = id;
-                    id++;
-
-                    listUserAdvertisement.Add(UserAdvertisement);
-                }
-            }
-
-            var AllUser = listUserAdvertisement.Select(x => x).GroupBy(x => x.User.UserId).ToList();
-
-            MatrixUI = null;
-            MatrixUI = new List<List<double>>();
-
-            var Row = new List<double>();
+            //Header dos produtos.
+            ReturnMatrix.Append(tab + tab + tab + "<tr>");
             foreach (var item in AllUser)
             {
-                var ta = listUserAdvertisement.Where(x=> x.User.UserId == item.FirstOrDefault().User.UserId).ToList();
+                var ta = listUserAdvertisement.Where(x => x.User.UserId == item.FirstOrDefault().User.UserId).ToList();
+
+                ReturnMatrix.AppendFormat("<td>{0}</td>", "---");
 
                 foreach (var item2 in ta)
                 {
-                    int t = item2.Rating;
-                    Row.Add(t);
+                    var d = item2.Advertisement.Description;
+                    ReturnMatrix.AppendFormat("<td>{0}</td>", d);
                 }
 
-                MatrixUI.Add(Row);
-                Row = new List<double>();
+                break;
+            }
+
+            ReturnMatrix.AppendLine("</tr>");
+            //Header dos produtos.
+
+            foreach (var item in AllUser)
+            {
+
+                ReturnMatrix.Append(tab + tab + tab + "<tr>");
+
+                var ta = listUserAdvertisement.Where(x => x.User.UserId == item.FirstOrDefault().User.UserId).ToList();
+
+                ReturnMatrix.AppendFormat("<td>{0}</td>", ta.FirstOrDefault().User.Name);
+
+                foreach (var item2 in ta)
+                {
+                    var t1 = item2.Rating;
+                    var t2 = item2.RatingPredict;
+
+                    ReturnMatrix.AppendFormat("<td>({0}-{1})</td>", t1, t2);
+                }
+                ReturnMatrix.AppendLine("</tr>");
+            }
+
+            ReturnMatrix.AppendLine("</table>");
+
+        }
+
+        private static void ConvertMatrix()
+        {
+
+            var AllUser = listUserAdvertisement
+                .Select(x => x)
+                .GroupBy(x => x.User.UserId)
+                .ToList();
+
+            int userCount = 0;
+            foreach (var item in AllUser)
+            {
+
+                var ta = listUserAdvertisement.Where(x => x.User.UserId == item.FirstOrDefault().User.UserId).ToList();
+
+                int AdvCount = 0;
+                foreach (var item2 in ta)
+                {
+
+                    var r = MatrixUI[userCount][AdvCount];
+                    item2.RatingPredict = (int)r;
+                    AdvCount++;
+                }
+
+                userCount++;
             }
 
         }
