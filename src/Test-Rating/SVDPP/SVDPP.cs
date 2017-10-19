@@ -11,11 +11,12 @@ namespace Test_Rating.SVDPP
     public class SVDPP
     {
 
-        private static int UserCount = 5;
-        private static int AdvertisementCount = 300;
-        private static int BestAdvertisement = 50;
+        private static int UserCount = 10;
+        private static int AdvertisementCount = 10;
 
-        private static int Factors = 5;                                         // The number of latent factors
+        private static int BestAdvertisement = 60;
+
+        private static int Factors = 10;                                         // The number of latent factors
         private static double TS = 0.025;                                       // The training speed 
         private static double L1 = 0.0005;                                      // Regularization coefficient lambda1
         private static double L2 = 0.0025;                                      // Regularization coefficient lambda2
@@ -51,6 +52,9 @@ namespace Test_Rating.SVDPP
             // Favoritos = 3
             // Ainda não viu o anuncio = 2
             // Anuncio Antigo =1 (Superior a 3 meses.)
+            // 
+            // Para aumentar a velocidade posso colocar todos os anuncios em cache.
+            // 
 
             GenerateRating(); // Gerador de dados.
 
@@ -388,7 +392,7 @@ namespace Test_Rating.SVDPP
                     UserAdvertisement.Advertisement.Id = k;
                     UserAdvertisement.Advertisement.Description = "Anuncio " + k;
                     
-                    UserAdvertisement.Rating = RandomNumber(-1, 6);
+                    UserAdvertisement.Rating = RandomNumber(-1, 11);
 
                     if (i == 1)
                         UserAdvertisement.Rating = 0;
